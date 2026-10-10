@@ -1,7 +1,9 @@
+
 BASE_URL = "https://jobs.dou.ua"
 RSS_URL = f"{BASE_URL}/vacancies/feeds/"
 LIST_URL = f"{BASE_URL}/vacancies/"
 LOAD_URL = f"{BASE_URL}/vacancies/xhr-load/"
+
 CATEGORY = "Python"
 
 EXPERIENCE_LEVELS = {
@@ -14,7 +16,13 @@ EXPERIENCE_LEVELS = {
 MAX_LOAD_MORE = 15
 CONCURRENCY = 3
 DELAY_SECONDS = 1.5
-USER_AGENT = "Mozilla/5.0 (portfolio-project; contact: your@email.com)"
+
+# Замініть адресу на власну контактну адресу,
+# якщо публікуєте проєкт і використовуєте цей User-Agent.
+USER_AGENT = (
+    "Mozilla/5.0 (compatible; PythonTechStats/1.0; "
+    "contact: sardor.tozhiev1994@gmail.com)"
+)
 
 RAW_DIR = "data/raw"
 CHARTS_DIR = "charts"
@@ -31,7 +39,7 @@ TECHNOLOGIES = {
     "Kubernetes": r"\b(?:kubernetes|k8s)\b",
     "AWS": r"\baws\b",
     "Celery": r"\bcelery\b",
-    "REST": r"\brest\s+api|\brestful\b",
+    "REST": r"\brest\s+api\b|\brestful\b",
     "Git": r"\bgit\b",
     "Pandas": r"\bpandas\b",
     "SQLAlchemy": r"\bsqlalchemy\b",

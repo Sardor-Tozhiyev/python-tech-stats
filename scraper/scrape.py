@@ -34,6 +34,21 @@ async def request(
             )
             response.raise_for_status()
             return response
+
+        except httpx.HTTPStatusError as exc:
+            print(
+                f"[WARN] HTTP {exc.response.status_code} "
+                f"{method} {url}"
+            )
+
+            if method == "POST":
+                print(
+                    "[WARN] Response body:",
+                    exc.response.text[:500],
+                )
+
+            return None
+
         except httpx.HTTPError as exc:
             print(f"[WARN] {method} {url}: {exc}")
             return None
@@ -98,6 +113,7 @@ def extract_links(html: str) -> set[str]:
     }
 
 
+
 async def links_from_xhr(
     client: httpx.AsyncClient,
     exp: str,
@@ -119,6 +135,8 @@ async def links_from_xhr(
         return set()
 
     links = extract_links(first_response.text)
+    if len(links) < 20:
+        return links
 
     token_match = re.search(
         r'window\.CSRF_TOKEN\s*=\s*"([^"]+)"',
@@ -131,7 +149,15 @@ async def links_from_xhr(
     )
 
     if not token:
+        print(f"[WARN] No CSRF token found for experience {exp}")
         return links
+
+    headers = {
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Origin": config.BASE_URL,
+        "Referer": str(first_response.url),
+        "X-Requested-With": "XMLHttpRequest",
+    }
 
     count = len(links)
 
@@ -145,10 +171,7 @@ async def links_from_xhr(
                 "csrfmiddlewaretoken": token,
                 "count": count,
             },
-            headers={
-                "Referer": str(first_response.url),
-                "X-Requested-With": "XMLHttpRequest",
-            },
+            headers=headers,
         )
 
         if response is None:
@@ -156,15 +179,17 @@ async def links_from_xhr(
 
         try:
             data = response.json()
-        except (ValueError, json.JSONDecodeError):
+        except ValueError:
             print(
-                f"[WARN] XHR returned invalid JSON for experience {exp}"
+                f"[WARN] XHR returned invalid JSON "
+                f"for experience {exp}"
             )
             break
 
         if not isinstance(data, dict):
             print(
-                f"[WARN] Unexpected XHR response for experience {exp}"
+                f"[WARN] Unexpected XHR response "
+                f"for experience {exp}"
             )
             break
 
@@ -172,7 +197,8 @@ async def links_from_xhr(
 
         if not isinstance(html, str):
             print(
-                f"[WARN] XHR HTML field is invalid for experience {exp}"
+                f"[WARN] XHR HTML field is invalid "
+                f"for experience {exp}"
             )
             break
 

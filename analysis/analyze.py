@@ -1,15 +1,13 @@
-
 from pathlib import Path
 
 import matplotlib
 
 matplotlib.use("Agg")
 
-import matplotlib.pyplot as plt
-import pandas as pd
+import matplotlib.pyplot as plt  # noqa: E402
+import pandas as pd  # noqa: E402
 
-import config
-
+import config  # noqa: E402
 
 TOP_N = 12
 
@@ -19,29 +17,23 @@ def load_latest() -> pd.DataFrame:
     files = sorted(Path(config.RAW_DIR).glob("vacancies_*.jsonl"))
 
     if not files:
-        raise SystemExit(
-            "No data found. Run first: python -m scraper.scrape"
-        )
+        raise SystemExit("No data found. Run first: python -m scraper.scrape")
 
     latest_file = files[-1]
 
     try:
         df = pd.read_json(latest_file, lines=True)
     except (ValueError, OSError) as exc:
-        raise SystemExit(
-            f"Failed to read {latest_file}: {exc}"
-        ) from exc
+        raise SystemExit(f"Failed to read {latest_file}: {exc}") from exc
 
     if df.empty:
         raise SystemExit(f"File {latest_file} contains no vacancies.")
 
-    required_columns = {"url", "description", "experience"}
-    missing_columns = required_columns - set(df.columns)
+    missing = {"url", "description", "experience"} - set(df.columns)
 
-    if missing_columns:
+    if missing:
         raise SystemExit(
-            f"Missing columns in {latest_file}: "
-            f"{', '.join(sorted(missing_columns))}"
+            f"Missing columns in {latest_file}: {', '.join(sorted(missing))}"
         )
 
     df["url"] = df["url"].fillna("").astype(str)
@@ -61,14 +53,11 @@ def load_latest() -> pd.DataFrame:
 
 
 def tech_flags(df: pd.DataFrame) -> pd.DataFrame:
-    """Return boolean flags indicating technology mentions."""
+    """Boolean flags: does each description mention each technology."""
     return pd.DataFrame(
         {
             name: df["description"].str.contains(
-                pattern,
-                case=False,
-                regex=True,
-                na=False,
+                pattern, case=False, regex=True, na=False
             )
             for name, pattern in config.TECHNOLOGIES.items()
         },
@@ -76,100 +65,70 @@ def tech_flags(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def count_technologies(df: pd.DataFrame) -> pd.Series:
-    """Count unique vacancies mentioning each technology."""
-    unique_vacancies = df.drop_duplicates(subset="url")
+def count_technologies(flags: pd.DataFrame) -> pd.Series:
+    """Number of vacancies mentioning each technology, most common first.
 
-    if unique_vacancies.empty:
-        return pd.Series(dtype="int64")
-
-    return (
-        tech_flags(unique_vacancies)
-        .sum()
-        .sort_values(ascending=False)
-        .astype(int)
-    )
+    `flags` must contain one row per unique vacancy.
+    """
+    return flags.sum().sort_values(ascending=False).astype(int)
 
 
-def plot_overall(df: pd.DataFrame, date_str: str) -> None:
-    counts = count_technologies(df).head(TOP_N)
-    total = df["url"].nunique()
+def experience_share(df: pd.DataFrame, flags: pd.DataFrame) -> pd.DataFrame:
+    """% of vacancies mentioning each technology within each experience level.
 
-    if total == 0 or counts.empty:
-        print("[WARN] No data available for the overall chart.")
-        return
+    `df` has one row per (vacancy, level); `flags` is indexed by vacancy URL.
+    """
+    row_flags = flags.loc[df["url"].to_numpy()]
+    return row_flags.groupby(df["experience"].to_numpy()).mean() * 100
 
-    percentages = (counts / total * 100).sort_values()
+
+def save_chart(filename: str) -> None:
+    path = Path(config.CHARTS_DIR) / filename
+    plt.tight_layout()
+    plt.savefig(path, dpi=150)
+    plt.close()
+    print(f"Saved: {path}")
+
+
+def plot_overall(counts: pd.Series, total: int, date_str: str) -> None:
+    percentages = (counts.head(TOP_N) / total * 100).sort_values()
 
     ax = percentages.plot.barh(figsize=(9, 6))
     ax.set_xlabel("% of vacancies")
-    ax.set_title(
-        f"Python Technologies on DOU "
-        f"({total} vacancies, {date_str})"
-    )
+    ax.set_title(f"Python Technologies on DOU ({total} vacancies, {date_str})")
 
-    plt.tight_layout()
-    output_path = Path(config.CHARTS_DIR) / f"overall_{date_str}.png"
-    plt.savefig(output_path, dpi=150)
-    plt.close()
-
-    print(f"Saved: {output_path}")
+    save_chart(f"overall_{date_str}.png")
 
 
-def plot_by_experience(df: pd.DataFrame, date_str: str) -> None:
-    if df.empty:
-        print("[WARN] No data available for the experience chart.")
-        return
+def plot_by_experience(
+    df: pd.DataFrame,
+    flags: pd.DataFrame,
+    counts: pd.Series,
+    date_str: str,
+) -> None:
+    share = experience_share(df, flags)
+    levels = [lvl for lvl in config.EXPERIENCE_LEVELS if lvl in share.index]
 
-    flags = tech_flags(df)
-    flags["experience"] = df["experience"].to_numpy()
-
-    share = flags.groupby("experience").mean() * 100
-
-    order = [
-        level
-        for level in config.EXPERIENCE_LEVELS
-        if level in share.index
-    ]
-
-    if not order:
+    if not levels:
         print("[WARN] No recognized experience levels found.")
         return
 
-    share = share.loc[order]
-    top = count_technologies(df).head(TOP_N).index
-    available_technologies = [
-        technology for technology in top if technology in share.columns
-    ]
+    top = list(counts.head(TOP_N).index)
 
-    if not available_technologies:
-        print("[WARN] No technologies available for the experience chart.")
-        return
-
-    ax = share[available_technologies].T.plot.bar(figsize=(12, 6))
+    ax = share.loc[levels, top].T.plot.bar(figsize=(12, 6))
     ax.set_ylabel("% of vacancies within each experience level")
     ax.set_title(f"Technologies by Experience Level ({date_str})")
 
     plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-
-    output_path = (
-        Path(config.CHARTS_DIR) / f"by_experience_{date_str}.png"
-    )
-    plt.savefig(output_path, dpi=150)
-    plt.close()
-
-    print(f"Saved: {output_path}")
+    save_chart(f"by_experience_{date_str}.png")
 
 
 def update_history(
-    df: pd.DataFrame,
+    counts: pd.Series,
+    total: int,
     date_str: str,
 ) -> pd.DataFrame:
-    """Update historical technology counts for a snapshot date."""
-    counts = count_technologies(df)
-    total = df["url"].nunique()
-
+    """Store technology counts for a snapshot date (replaces the same date)."""
     new = pd.DataFrame(
         {
             "date": date_str,
@@ -185,45 +144,33 @@ def update_history(
     if path.exists() and path.stat().st_size > 0:
         old = pd.read_csv(path)
 
-        expected_columns = {"date", "technology", "count", "total"}
-
-        if expected_columns.issubset(old.columns):
+        if {"date", "technology", "count", "total"}.issubset(old.columns):
             old = old[old["date"].astype(str) != date_str]
             new = pd.concat([old, new], ignore_index=True)
         else:
             print(
-                "[WARN] The history file has an invalid structure. "
-                "Recreating it."
+                "[WARN] The history file has an invalid structure."
+                " Recreating it."
             )
 
-    new = new.sort_values(
-        ["date", "technology"]
-    ).reset_index(drop=True)
-
+    new = new.sort_values(["date", "technology"]).reset_index(drop=True)
     new.to_csv(path, index=False)
 
     return new
 
 
 def plot_trends(history: pd.DataFrame) -> None:
-    if history.empty or history["date"].nunique() < 2:
-        print("At least two dates are required to plot trends. Skipping.")
-        return
-
     history = history.copy()
     history["date"] = history["date"].astype(str)
-    history["count"] = pd.to_numeric(
-        history["count"], errors="coerce"
-    )
-    history["total"] = pd.to_numeric(
-        history["total"], errors="coerce"
-    )
+
+    for column in ("count", "total"):
+        history[column] = pd.to_numeric(history[column], errors="coerce")
 
     history = history.dropna(subset=["count", "total"])
     history = history[history["total"] > 0]
 
     if history["date"].nunique() < 2:
-        print("[WARN] Not enough valid data points to plot trends.")
+        print("At least two dates are required to plot trends. Skipping.")
         return
 
     history["pct"] = history["count"] / history["total"] * 100
@@ -235,54 +182,34 @@ def plot_trends(history: pd.DataFrame) -> None:
         aggfunc="last",
     ).sort_index()
 
-    if pivot.empty:
-        print("[WARN] No data available for the trends chart.")
-        return
-
-    top = (
-        pivot.iloc[-1]
-        .dropna()
-        .sort_values(ascending=False)
-        .head(8)
-        .index
-    )
-
-    if len(top) == 0:
-        print("[WARN] No technologies available for the trends chart.")
-        return
+    top = pivot.iloc[-1].dropna().sort_values(ascending=False).head(8).index
 
     ax = pivot[list(top)].plot(marker="o", figsize=(10, 6))
     ax.set_ylabel("% of vacancies")
     ax.set_title("Technology Trends")
 
     plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-
-    output_path = Path(config.CHARTS_DIR) / "trends.png"
-    plt.savefig(output_path, dpi=150)
-    plt.close()
-
-    print(f"Saved: {output_path}")
+    save_chart("trends.png")
 
 
 def main() -> None:
     Path(config.CHARTS_DIR).mkdir(parents=True, exist_ok=True)
-    Path(config.HISTORY_FILE).parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
 
     df = load_latest()
     date_str = str(df["snapshot"].iloc[0])
 
-    plot_overall(df, date_str)
-    plot_by_experience(df, date_str)
+    # Регулярні вирази виконуються один раз на унікальну вакансію.
+    unique = df.drop_duplicates(subset="url").set_index("url")
+    flags = tech_flags(unique)
+    counts = count_technologies(flags)
+    total = len(unique)
 
-    history = update_history(df, date_str)
-    plot_trends(history)
+    plot_overall(counts, total, date_str)
+    plot_by_experience(df, flags, counts, date_str)
+    plot_trends(update_history(counts, total, date_str))
 
     print("\nTop Technologies:")
-    print(count_technologies(df).head(TOP_N))
+    print(counts.head(TOP_N))
 
 
 if __name__ == "__main__":

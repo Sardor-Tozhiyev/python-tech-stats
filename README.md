@@ -6,58 +6,77 @@ The project helps explore which technologies appear most frequently in Python jo
 
 ## Features
 
-- **Asynchronous scraping** — collects vacancy data using `httpx` and `asyncio`.
-- **Resilient requests** — retries timeouts, `429` and `5xx` responses with exponential backoff, and keeps going when a single vacancy fails.
-- **Multiple data sources** — retrieves vacancy links from DOU RSS feeds and the vacancy listing page, including its `xhr-load` endpoint.
-- **Vacancy parsing** — extracts job titles, publication dates, locations, descriptions, and experience categories.
-- **Technology analysis** — identifies technology mentions using regular expressions.
-- **Experience-level comparison** — analyzes vacancies across different experience ranges.
-- **Data visualization** — generates charts with Matplotlib.
-- **Historical tracking** — stores technology statistics by collection date to support trend analysis.
-- **Automated tests** — unit tests for URL normalization, link extraction, retries, and vacancy parsing.
+* **Asynchronous scraping** — collects vacancy data using `httpx` and `asyncio`.
+* **Resilient requests** — retries timeouts, `429` and `5xx` responses with exponential backoff, and keeps going when a single vacancy fails.
+* **Multiple data sources** — retrieves vacancy links from DOU RSS feeds and the vacancy listing page, including its `xhr-load` endpoint.
+* **Vacancy parsing** — extracts job titles, publication dates, locations, descriptions, and experience categories.
+* **Technology analysis** — identifies technology mentions using regular expressions.
+* **Experience-level comparison** — analyzes vacancies across different experience ranges.
+* **Data visualization** — generates charts with Matplotlib.
+* **Historical tracking** — stores technology statistics by collection date to support trend analysis.
+* **Automated tests** — unit tests for URL normalization, link extraction, retries, and vacancy parsing.
 
 ## Technologies Used
 
-- Python
-- `asyncio`
-- `httpx`
-- Beautiful Soup
-- lxml
-- pandas
-- Matplotlib
-- pytest
-- Regular expressions
-- JSONL and CSV
+* Python
+* `asyncio`
+* `httpx`
+* Beautiful Soup
+* lxml
+* pandas
+* Matplotlib
+* pytest
+* Regular expressions
+* JSONL and CSV
 
 ## Project Structure
 
 ```text
 python-tech-stats/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── analysis/
+│   ├── __init__.py
 │   └── analyze.py
 ├── charts/
+│   ├── by_experience_2026-10-10.png
+│   └── overall_2026-10-10.png
 ├── data/
 │   ├── raw/
+│   │   ├── .gitkeep
+│   │   └── vacancies_2026-10-10.jsonl
 │   └── history.csv
 ├── scraper/
 │   ├── __init__.py
 │   └── scrape.py
 ├── tests/
+│   ├── test_analyze.py
+│   ├── test_config.py
 │   └── test_scrape.py
 ├── .gitignore
 ├── config.py
+├── pyproject.toml
 ├── requirements.txt
 └── README.md
 ```
 
-- `config.py` — configuration, experience levels, scraping parameters, and technology patterns.
-- `scraper/scrape.py` — asynchronously collects vacancy links and parses vacancy pages.
-- `analysis/analyze.py` — analyzes collected data, generates charts, and updates historical statistics.
-- `tests/` — automated tests that run without network access.
-- `data/raw/` — stores collected vacancy data in JSONL format.
-- `data/history.csv` — stores historical technology counts by collection date.
-- `charts/` — contains generated visualizations.
-- `requirements.txt` — project dependencies.
+### Main Components
+
+* `.github/workflows/ci.yml` — GitHub Actions workflow for automated project checks.
+* `analysis/analyze.py` — analyzes collected vacancy data, generates charts, and updates historical statistics.
+* `charts/` — contains generated technology statistics visualizations.
+* `data/raw/` — stores raw vacancy data in JSONL format.
+* `data/history.csv` — stores historical technology counts by collection date.
+* `scraper/scrape.py` — asynchronously collects vacancy links and extracts vacancy information from DOU.
+* `tests/test_analyze.py` — tests analysis functionality.
+* `tests/test_config.py` — tests configuration and technology patterns.
+* `tests/test_scrape.py` — tests scraping functionality, including URL handling, link extraction, retries, and parsing.
+* `config.py` — contains scraping settings, experience categories, and technology patterns.
+* `pyproject.toml` — contains project tooling configuration, including code formatting and linting settings.
+* `requirements.txt` — lists project dependencies.
+* `.gitignore` — specifies files and directories Git should ignore.
+
 
 ## How It Works
 
@@ -74,15 +93,15 @@ A vacancy may match multiple experience categories. In experience-specific stati
 
 The list is configurable and currently includes:
 
-- **Frameworks:** Django, Flask, FastAPI
-- **Databases:** PostgreSQL, MySQL
-- **Infrastructure and cloud:** Docker, Kubernetes, AWS
-- **Task queues and messaging:** Celery, RabbitMQ, Kafka
-- **Caching and asynchronous programming:** Redis, asyncio
-- **Data processing:** Pandas
-- **Database tools:** SQLAlchemy
-- **Testing:** pytest
-- **Development tools and concepts:** Git, REST APIs
+* **Frameworks:** Django, Flask, FastAPI
+* **Databases:** PostgreSQL, MySQL
+* **Infrastructure and cloud:** Docker, Kubernetes, AWS
+* **Task queues and messaging:** Celery, RabbitMQ, Kafka
+* **Caching and asynchronous programming:** Redis, asyncio
+* **Data processing:** Pandas
+* **Database tools:** SQLAlchemy
+* **Testing:** pytest
+* **Development tools and concepts:** Git, REST APIs
 
 Technology patterns can be modified or extended in `config.py`.
 
@@ -143,27 +162,42 @@ The tests use mocked HTTP responses, so they do not contact DOU and finish in ab
 
 The project generates visual reports based on the latest collected vacancy data.
 
-- **Overall technology statistics** — shows which tracked technologies are mentioned most frequently across unique vacancies.
-- **Technology statistics by experience level** — compares technology mentions across experience categories.
-- **Technology trends** — tracks changes in technology mentions across collection dates, when sufficient historical data is available.
+* **Overall technology statistics** — shows which tracked technologies are mentioned most frequently across unique vacancies.
+* **Technology statistics by experience level** — compares technology mentions across experience categories.
+* **Technology trends** — tracks changes in technology mentions across collection dates, when sufficient historical data is available.
 
 Generated charts are stored in `charts/`. The results represent a snapshot of the vacancies collected at a particular time and may change with subsequent runs.
 
-Historical counts are stored in `data/history.csv` to support trend analysis.
+### Overall Technology Statistics
+
+![Overall technology statistics](charts/overall_2026-10-10.png)
+
+### Technology Statistics by Experience Level
+
+![Technology statistics by experience level](charts/by_experience_2026-10-10.png)
+
+### Sample Vacancy Data
+
+A sample of collected vacancy data from October 10, 2026, is available in JSONL format:
+
+[`data/raw/vacancies_2026-10-10.jsonl`](data/raw/vacancies_2026-10-10.jsonl)
+
+Each line in the file represents a vacancy record collected by the scraper.
+
+Historical counts are stored in `data/history.csv` to support trend analysis. Meaningful comparisons require data collected on multiple dates.
 
 ## Limitations
 
-- **Keyword-based analysis:** a technology mention does not necessarily mean it is a mandatory job requirement.
-- **Data coverage:** results reflect the vacancies discovered by the scraper and are not a complete representation of the entire Python job market.
-- **Changing data:** vacancy listings and technology frequencies may change between collection runs.
-- **Historical trends:** meaningful trend comparisons require data collected on multiple dates.
-- **Website availability and layout:** requests may occasionally fail or be restricted by the website. The scraper uses request delays, retries failed requests with exponential backoff, and logs errors. It relies on the current DOU HTML structure, so a layout change can reduce the amount of collected data; the scraper logs an error when too few vacancies are parsed.
+* **Keyword-based analysis:** a technology mention does not necessarily mean it is a mandatory job requirement.
+* **Data coverage:** results reflect the vacancies discovered by the scraper and are not a complete representation of the entire Python job market.
+* **Changing data:** vacancy listings and technology frequencies may change between collection runs.
+* **Historical trends:** meaningful trend comparisons require data collected on multiple dates.
+* **Website availability and layout:** requests may occasionally fail or be restricted by the website. The scraper uses request delays, retries failed requests with exponential backoff, and logs errors. It relies on the current DOU HTML structure, so a layout change can reduce the amount of collected data; the scraper logs an error when too few vacancies are parsed.
 
 ## Possible Improvements
 
-- Schedule regular scraping runs.
-- Add more technologies and improve keyword matching, including negative mentions such as "no Docker experience required".
-- Compare technology demand across dates and experience levels.
-- Add salary analysis when reliable salary data is available.
-- Add tests for the analysis module and fixtures based on real DOU pages.
-- Add example data and sample charts to the repository.
+* Schedule regular scraping runs.
+* Add more technologies and improve keyword matching, including negative mentions such as "no Docker experience required".
+* Compare technology demand across dates and experience levels.
+* Add salary analysis when reliable salary data is available.
+* Expand test coverage with additional edge cases and fixtures based on real DOU pages.

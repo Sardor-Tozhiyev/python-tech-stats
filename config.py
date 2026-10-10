@@ -1,4 +1,3 @@
-
 BASE_URL = "https://jobs.dou.ua"
 RSS_URL = f"{BASE_URL}/vacancies/feeds/"
 LIST_URL = f"{BASE_URL}/vacancies/"
@@ -17,8 +16,6 @@ MAX_LOAD_MORE = 15
 CONCURRENCY = 3
 DELAY_SECONDS = 1.5
 
-# Замініть адресу на власну контактну адресу,
-# якщо публікуєте проєкт і використовуєте цей User-Agent.
 USER_AGENT = (
     "Mozilla/5.0 (compatible; PythonTechStats/1.0; "
     "contact: sardor.tozhiev1994@gmail.com)"
@@ -37,9 +34,9 @@ TECHNOLOGIES = {
     "Redis": r"\bredis\b",
     "Docker": r"\bdocker\b",
     "Kubernetes": r"\b(?:kubernetes|k8s)\b",
-    "AWS": r"\baws\b",
+    "AWS": r"\baws\b|\bamazon\s+web\s+services\b",
     "Celery": r"\bcelery\b",
-    "REST": r"\brest\s+api\b|\brestful\b",
+    "REST": r"\brestful\b|\brest[\s-]*apis?\b|(?-i:\bREST\b)",
     "Git": r"\bgit\b",
     "Pandas": r"\bpandas\b",
     "SQLAlchemy": r"\bsqlalchemy\b",

@@ -2,4 +2,4 @@ data/raw/*.jsonl
 data/history.csv
 __pycache__/
 .venv/
-.idea
+.idea/
